@@ -2,6 +2,8 @@ source https://api.nuget.org/v3/index.json
 
 storage: none
 nuget FSharp.Core
+nuget System.Speech
+nuget TextCopy
 
 group Tests
 
