@@ -33,10 +33,14 @@ let table =
     |> Table.withBorder TableBorder.None
     |> Table.withShowHeaders false
 
+let panelHeader =
+    PanelHeader.fromString "([red]Clipboard2TTS[/])"
+    |> PanelHeader.withJustification Justify.Right
+
 let panel =
     Panel.fromRenderable table
     |> Panel.withBorder BoxBorder.Rounded
-    |> Panel.withHeader (PanelHeader.fromString "Clipboard2TTS")
+    |> Panel.withHeader panelHeader
 
 AnsiConsole.live panel
 |> LiveDisplay.withAutoClear false
