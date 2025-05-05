@@ -1,5 +1,8 @@
-﻿open System.Globalization
+﻿open System
+open System.Globalization
 open System.Speech.Synthesis
+open Pinicola.FSharp.SpectreConsole
+open Spectre.Console
 open TextCopy
 
 let getVoice (culture: string) (s: SpeechSynthesizer) =
@@ -11,13 +14,65 @@ let getVoice (culture: string) (s: SpeechSynthesizer) =
     | [] -> failwith $"no voice is matching culture {culture}"
     | _ -> failwith $"multiple voices are matching culture {culture}: {voices}"
 
-task {
-    let! text = ClipboardService.GetTextAsync()
-    let speechSynthesizer = new SpeechSynthesizer()
-    let voice = speechSynthesizer |> getVoice "fr-FR"
-    speechSynthesizer.SelectVoice(voice.VoiceInfo.Name)
-    speechSynthesizer.Rate <- 6
-    speechSynthesizer.Speak(text)
-}
-|> Async.AwaitTask
-|> Async.RunSynchronously
+let splitText (text: string) =
+    text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
+
+let text = ClipboardService.GetText() |> splitText
+let speechSynthesizer = new SpeechSynthesizer()
+let voice = speechSynthesizer |> getVoice "fr-FR"
+speechSynthesizer.SelectVoice(voice.VoiceInfo.Name)
+speechSynthesizer.Rate <- 6
+
+let table =
+    Table.init ()
+    |> Table.withWidth 80
+    |> Table.addColumns [
+        "X"
+        "Text"
+    ]
+    |> Table.withBorder TableBorder.None
+    |> Table.withShowHeaders false
+
+let panel =
+    Panel.fromRenderable table
+    |> Panel.withBorder BoxBorder.Rounded
+    |> Panel.withHeader (PanelHeader.fromString "Clipboard2TTS")
+
+AnsiConsole.live panel
+|> LiveDisplay.withAutoClear false
+|> LiveDisplay.withOverflow VerticalOverflow.Visible
+|> LiveDisplay.start (fun ctx ->
+
+    text
+    |> Seq.iter (fun line ->
+        table
+        |> Table.addRow [
+            " "
+            line
+        ]
+        |> ignore
+    )
+
+    LiveDisplayContext.refresh ctx
+
+    text
+    |> Seq.iteri (fun rowIndex line ->
+
+        (Markup.fromString "➤", table) ||> Table.updateCell rowIndex 0
+
+        (Markup.fromInterpolated $"[bold black on white]{line}[/]", table)
+        ||> Table.updateCell rowIndex 1
+
+        LiveDisplayContext.refresh ctx
+
+        speechSynthesizer.Speak(line)
+
+        (Markup.fromString " ", table) ||> Table.updateCell rowIndex 0
+
+        (Markup.fromInterpolated $"[default on default]{line}[/]", table)
+        ||> Table.updateCell rowIndex 1
+
+        LiveDisplayContext.refresh ctx
+    )
+
+)
