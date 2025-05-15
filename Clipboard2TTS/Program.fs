@@ -1,31 +1,26 @@
 ﻿open System
-open System.Globalization
-open System.Speech.Synthesis
+open Clipboard2TTS
+open Pinicola.FSharp
 open Pinicola.FSharp.SpectreConsole
 open Spectre.Console
 open TextCopy
 
-let getVoice (culture: string) (s: SpeechSynthesizer) =
-    let cultureInfo = CultureInfo(culture)
-    let voices = s.GetInstalledVoices(cultureInfo) |> Seq.toList
+let configuration = Configuration.getFromAppSettings ()
 
-    match voices with
-    | [ voice ] -> voice
-    | [] -> failwith $"no voice is matching culture {culture}"
-    | _ -> failwith $"multiple voices are matching culture {culture}: {voices}"
+let speechSynthesizer =
+    SpeechSynthesizerHelper.get configuration.Culture configuration.Rate
 
-let splitText (text: string) =
-    text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
+let text =
+    ClipboardService.GetText()
+    |> String.splitWithOptions Environment.NewLine (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
 
-let text = ClipboardService.GetText() |> splitText
-let speechSynthesizer = new SpeechSynthesizer()
-let voice = speechSynthesizer |> getVoice "fr-FR"
-speechSynthesizer.SelectVoice(voice.VoiceInfo.Name)
-speechSynthesizer.Rate <- 6
+Console.Title <- "Clipboard2TTS"
+Console.WindowWidth <- 80
+Console.BufferWidth <- 80
 
 let table =
     Table.init ()
-    |> Table.withWidth 80
+    // |> Table.withWidth 80
     |> Table.addColumns [
         "X"
         "Text"
