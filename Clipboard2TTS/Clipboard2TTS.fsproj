@@ -5,8 +5,10 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <WarningsAsErrors>FS0025</WarningsAsErrors>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ApplicationIcon>Clipboard2TTS.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="Clipboard2TTS.ico" />
     <None Include="paket.references"/>
     <Compile Include="Configuration.fs"/>
     <Compile Include="SpeechSynthesizerHelper.fs"/>
