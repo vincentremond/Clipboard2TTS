@@ -12,7 +12,9 @@ let speechSynthesizer =
 
 let text =
     ClipboardService.GetText()
-    |> String.splitWithOptions Environment.NewLine (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
+    |> String.splitWithOptions
+        Environment.NewLine
+        (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
 
 Console.Title <- "Clipboard2TTS"
 Console.WindowWidth <- 80
