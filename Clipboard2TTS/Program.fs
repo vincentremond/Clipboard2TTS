@@ -12,17 +12,12 @@ let speechSynthesizer =
 
 let text =
     ClipboardService.GetText()
-    |> String.splitWithOptions
-        Environment.NewLine
-        (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
+    |> String.splitWithOptions Environment.NewLine (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
 
 Console.Title <- "Clipboard2TTS"
-Console.WindowWidth <- 80
-Console.BufferWidth <- 80
 
 let table =
     Table.init ()
-    // |> Table.withWidth 80
     |> Table.addColumns [
         "X"
         "Text"
@@ -41,7 +36,8 @@ let panel =
 
 AnsiConsole.live panel
 |> LiveDisplay.withAutoClear false
-|> LiveDisplay.withOverflow VerticalOverflow.Visible
+|> LiveDisplay.withOverflow VerticalOverflow.Ellipsis
+|> LiveDisplay.withCropping VerticalOverflowCropping.Bottom
 |> LiveDisplay.start (fun ctx ->
 
     text
@@ -49,7 +45,7 @@ AnsiConsole.live panel
         table
         |> Table.addRow [
             " "
-            line
+            Markup.escape line
         ]
         |> ignore
     )
@@ -57,23 +53,37 @@ AnsiConsole.live panel
     LiveDisplayContext.refresh ctx
 
     text
-    |> Seq.iteri (fun rowIndex line ->
+    |> Array.iteri'
+        (fun rowIndex removedRows line ->
 
-        (Markup.fromString "➤", table) ||> Table.updateCell rowIndex 0
+            let fixedRowIndex = rowIndex - removedRows
 
-        (Markup.fromInterpolated $"[bold black on white]{line}[/]", table)
-        ||> Table.updateCell rowIndex 1
+            let fixedRowIndex, removedRows =
+                if fixedRowIndex > 3 then
+                    table |> Table.removeRow 0 |> ignore
+                    fixedRowIndex - 1, (removedRows + 1)
 
-        LiveDisplayContext.refresh ctx
+                else
+                    fixedRowIndex, removedRows
 
-        speechSynthesizer.Speak(line)
+            (Markup.fromString "➤", table) ||> Table.updateCell fixedRowIndex 0
 
-        (Markup.fromString " ", table) ||> Table.updateCell rowIndex 0
+            (Markup.fromInterpolated $"[bold black on white]{line}[/]", table)
+            ||> Table.updateCell fixedRowIndex 1
 
-        (Markup.fromInterpolated $"[default on default]{line}[/]", table)
-        ||> Table.updateCell rowIndex 1
+            LiveDisplayContext.refresh ctx
 
-        LiveDisplayContext.refresh ctx
-    )
+            speechSynthesizer.Speak(line)
+
+            (Markup.fromString " ", table) ||> Table.updateCell fixedRowIndex 0
+
+            (Markup.fromInterpolated $"[default on default]{line}[/]", table)
+            ||> Table.updateCell fixedRowIndex 1
+
+            LiveDisplayContext.refresh ctx
+
+            removedRows
+        )
+        0
 
 )
