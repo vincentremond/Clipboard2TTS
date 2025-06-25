@@ -10,10 +10,9 @@ module SpeechSynthesizerHelper =
         let cultureInfo = CultureInfo(culture)
         let voices = s.GetInstalledVoices(cultureInfo) |> Seq.toList
 
-        match voices with
-        | [ voice ] -> voice
-        | [] -> failwith $"no voice is matching culture {culture}"
-        | _ -> failwith $"multiple voices are matching culture {culture}: {voices}"
+        match voices |> List.tryHead with
+        | Some voice -> voice
+        | None -> failwith $"no voice is matching culture {culture}"
 
     let get culture rate =
         let speechSynthesizer = new SpeechSynthesizer()

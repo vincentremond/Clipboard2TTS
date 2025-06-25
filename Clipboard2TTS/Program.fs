@@ -1,91 +1,114 @@
 ﻿open System
 open Clipboard2TTS
+open Fargo
+open Fargo.Parsers
 open Pinicola.FSharp
+open Pinicola.FSharp.Fargo
 open Pinicola.FSharp.SpectreConsole
 open Spectre.Console
 open TextCopy
 
-let configuration = Configuration.getFromAppSettings ()
+let commandLineParser =
+    let tryParseInt32 error =
+        optParse (Int32.tryParse >> (Result.ofOption error))
 
-let speechSynthesizer =
-    SpeechSynthesizerHelper.get configuration.Culture configuration.Rate
+    fargo {
+        let! culture = opt "culture" "c" "en-US" "The culture to use for TTS" |> defaultValue "en-US"
 
-let text =
-    ClipboardService.GetText()
-    |> String.splitWithOptions
-        Environment.NewLine
-        (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
+        let! rate =
+            opt "rate" "r" "8" "The speech rate (-10 to 10)"
+            |> tryParseInt32 "Invalid rate, must be an integer between -10 and 10"
+            |> defaultValue 8
 
-Console.Title <- "Clipboard2TTS"
+        return {
+            Culture = culture
+            Rate = rate
+        }
+    }
 
-let table =
-    Table.init ()
-    |> Table.addColumns [
-        "X"
-        "Text"
-    ]
-    |> Table.withBorder TableBorder.None
-    |> Table.withShowHeaders false
+FargoCmdLine.run
+    "Clipboard2TTS"
+    commandLineParser
+    (fun configuration ->
 
-let panelHeader =
-    PanelHeader.fromString "([red]Clipboard2TTS[/])"
-    |> PanelHeader.withJustification Justify.Right
+        let speechSynthesizer =
+            SpeechSynthesizerHelper.get configuration.Culture configuration.Rate
 
-let panel =
-    Panel.fromRenderable table
-    |> Panel.withBorder BoxBorder.Rounded
-    |> Panel.withHeader panelHeader
+        let text =
+            ClipboardService.GetText()
+            |> String.splitWithOptions Environment.NewLine (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
 
-AnsiConsole.live panel
-|> LiveDisplay.withAutoClear false
-|> LiveDisplay.withOverflow VerticalOverflow.Ellipsis
-|> LiveDisplay.withCropping VerticalOverflowCropping.Bottom
-|> LiveDisplay.start (fun ctx ->
+        Console.Title <- "Clipboard2TTS"
 
-    text
-    |> Seq.iter (fun line ->
-        table
-        |> Table.addRow [
-            " "
-            Markup.escape line
-        ]
-        |> ignore
-    )
+        let table =
+            Table.init ()
+            |> Table.addColumns [
+                "X"
+                "Text"
+            ]
+            |> Table.withBorder TableBorder.None
+            |> Table.withShowHeaders false
 
-    LiveDisplayContext.refresh ctx
+        let panelHeader =
+            PanelHeader.fromString "([red]Clipboard2TTS[/])"
+            |> PanelHeader.withJustification Justify.Right
 
-    text
-    |> Array.iteri'
-        (fun rowIndex removedRows line ->
+        let panel =
+            Panel.fromRenderable table
+            |> Panel.withBorder BoxBorder.Rounded
+            |> Panel.withHeader panelHeader
 
-            let fixedRowIndex = rowIndex - removedRows
+        AnsiConsole.live panel
+        |> LiveDisplay.withAutoClear false
+        |> LiveDisplay.withOverflow VerticalOverflow.Ellipsis
+        |> LiveDisplay.withCropping VerticalOverflowCropping.Bottom
+        |> LiveDisplay.start (fun ctx ->
 
-            let fixedRowIndex, removedRows =
-                if fixedRowIndex > 3 then
-                    table |> Table.removeRow 0 |> ignore
-                    fixedRowIndex - 1, (removedRows + 1)
-
-                else
-                    fixedRowIndex, removedRows
-
-            (Markup.fromString "➤", table) ||> Table.updateCell fixedRowIndex 0
-
-            (Markup.fromInterpolated $"[bold black on white]{line}[/]", table)
-            ||> Table.updateCell fixedRowIndex 1
+            text
+            |> Seq.iter (fun line ->
+                table
+                |> Table.addRow [
+                    " "
+                    Markup.escape line
+                ]
+                |> ignore
+            )
 
             LiveDisplayContext.refresh ctx
 
-            speechSynthesizer.Speak(line)
+            text
+            |> Array.iteri'
+                (fun rowIndex removedRows line ->
 
-            (Markup.fromString " ", table) ||> Table.updateCell fixedRowIndex 0
+                    let fixedRowIndex = rowIndex - removedRows
 
-            (Markup.fromInterpolated $"[default on default]{line}[/]", table)
-            ||> Table.updateCell fixedRowIndex 1
+                    let fixedRowIndex, removedRows =
+                        if fixedRowIndex > 3 then
+                            table |> Table.removeRow 0 |> ignore
+                            fixedRowIndex - 1, (removedRows + 1)
 
-            LiveDisplayContext.refresh ctx
+                        else
+                            fixedRowIndex, removedRows
 
-            removedRows
+                    (Markup.fromString "➤", table) ||> Table.updateCell fixedRowIndex 0
+
+                    (Markup.fromInterpolated $"[bold black on white]{line}[/]", table)
+                    ||> Table.updateCell fixedRowIndex 1
+
+                    LiveDisplayContext.refresh ctx
+
+                    speechSynthesizer.Speak(line)
+
+                    (Markup.fromString " ", table) ||> Table.updateCell fixedRowIndex 0
+
+                    (Markup.fromInterpolated $"[default on default]{line}[/]", table)
+                    ||> Table.updateCell fixedRowIndex 1
+
+                    LiveDisplayContext.refresh ctx
+
+                    removedRows
+                )
+                0
+
         )
-        0
-
-)
+    )
