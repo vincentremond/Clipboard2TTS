@@ -18,5 +18,5 @@ module SpeechSynthesizerHelper =
         let speechSynthesizer = new SpeechSynthesizer()
         let voice = speechSynthesizer |> getVoice culture
         speechSynthesizer.SelectVoice(voice.VoiceInfo.Name)
-        speechSynthesizer.Rate <- 6
+        speechSynthesizer.Rate <- rate
         speechSynthesizer
