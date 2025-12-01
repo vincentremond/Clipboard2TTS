@@ -36,8 +36,8 @@ FargoCmdLine.run
 
         let text =
             ClipboardService.GetText()
-            |> String.splitWithOptions
-                Environment.NewLine
+            |> String.replace "\r\n" "\n"
+            |> String.splitWithOptions "\n"
                 (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
 
         Console.Title <- "Clipboard2TTS"
@@ -79,38 +79,23 @@ FargoCmdLine.run
             LiveDisplayContext.refresh ctx
 
             text
-            |> Array.iteri'
-                (fun rowIndex removedRows line ->
+            |> Array.iteri (fun rowIndex line ->
 
-                    let fixedRowIndex = rowIndex - removedRows
+                (Markup.fromString "➤", table) ||> Table.updateCell rowIndex 0
 
-                    let fixedRowIndex, removedRows =
-                        if fixedRowIndex > 3 then
-                            table |> Table.removeRow 0 |> ignore
-                            fixedRowIndex - 1, (removedRows + 1)
+                (Markup.fromInterpolated $"[bold black on white]{line}[/]", table)
+                ||> Table.updateCell rowIndex 1
 
-                        else
-                            fixedRowIndex, removedRows
+                LiveDisplayContext.refresh ctx
 
-                    (Markup.fromString "➤", table) ||> Table.updateCell fixedRowIndex 0
+                speechSynthesizer.Speak(line)
 
-                    (Markup.fromInterpolated $"[bold black on white]{line}[/]", table)
-                    ||> Table.updateCell fixedRowIndex 1
+                (Markup.fromString " ", table) ||> Table.updateCell rowIndex 0
 
-                    LiveDisplayContext.refresh ctx
+                (Markup.fromInterpolated $"[default on default]{line}[/]", table)
+                ||> Table.updateCell rowIndex 1
 
-                    speechSynthesizer.Speak(line)
-
-                    (Markup.fromString " ", table) ||> Table.updateCell fixedRowIndex 0
-
-                    (Markup.fromInterpolated $"[default on default]{line}[/]", table)
-                    ||> Table.updateCell fixedRowIndex 1
-
-                    LiveDisplayContext.refresh ctx
-
-                    removedRows
-                )
-                0
-
+                LiveDisplayContext.refresh ctx
+            )
         )
     )
