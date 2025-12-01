@@ -37,8 +37,7 @@ FargoCmdLine.run
         let text =
             ClipboardService.GetText()
             |> String.replace "\r\n" "\n"
-            |> String.splitWithOptions "\n"
-                (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
+            |> String.splitWithOptions "\n" (StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
 
         Console.Title <- "Clipboard2TTS"
 
